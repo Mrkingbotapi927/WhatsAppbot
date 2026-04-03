@@ -160,7 +160,7 @@ async function startBot() {
     sock.ev.on('creds.update', saveCreds);
 
     sock.ev.on('messages.upsert', async ({ messages }) => {
-        const msg = messages[0];
+    console.log("MESSAGE RECEIVED");
         if (!msg.message || msg.key.fromMe) return;
 
         const text = (
@@ -168,8 +168,8 @@ async function startBot() {
             msg.message.extendedTextMessage?.text || ""
         ).trim();
 
-        const sender = msg.key.remoteJid.split('@')[0];
-        if (sender !== config.OWNER_ID) return;
+        const sender = msg.key.remoteJid.split('@')[0].split(':')[0];
+        if (!sender.includes(config.OWNER_ID)) return;
 
         const args = text.split(' ');
         const command = args[0].toLowerCase();
