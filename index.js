@@ -160,48 +160,42 @@ async function startBot() {
     sock.ev.on('creds.update', saveCreds);
 
     sock.ev.on('messages.upsert', async ({ messages }) => {
-    console.log("MESSAGE RECEIVED");
-        if (!msg.message || msg.key.fromMe) return;
+    const msg = messages[0];
+    if (!msg || !msg.message) return;
 
-        const text = (
-            msg.message.conversation ||
-            msg.message.extendedTextMessage?.text || ""
-        ).trim();
+    const text = (
+        msg.message.conversation ||
+        msg.message.extendedTextMessage?.text || ""
+    ).trim();
 
-        const sender = msg.key.remoteJid.split('@')[0].split(':')[0];
-        if (!sender.includes(config.OWNER_ID)) return;
+    const sender = msg.key.remoteJid?.split('@')[0]?.split(':')[0];
 
-        const args = text.split(' ');
-        const command = args[0].toLowerCase();
+    console.log("SENDER:", sender);
+    console.log("TEXT:", text);
 
-        if (command === 'otpstart') {
-            if (running) return sock.sendMessage(msg.key.remoteJid, { text: "⚠️ Already running!" });
-            running = true;
-            await sock.sendMessage(msg.key.remoteJid, { text: "✅ OTP Forwarding Started" });
-            startOtpLoop(sock);
+    if (sender !== config.OWNER_ID) return;
 
-        } else if (command === 'otpstop') {
-            running = false;
-            await sock.sendMessage(msg.key.remoteJid, { text: "⏹️ OTP Forwarding Stopped" });
+    const command = text.toLowerCase();
 
-        } else if (command === 'status') {
-            const status = running ? "🟢 Active" : "🔴 Stopped";
-            await sock.sendMessage(msg.key.remoteJid, {
-                text: `✨ *Bot Status:* ${status}\n\n> ${config.BRANDING}`
-            });
-
-        } else if (command === 'help') {
-            await sock.sendMessage(msg.key.remoteJid, {
-                text:
-                    `📋 *Commands:*\n\n` +
-                    `*otpstart* - Start OTP forwarding\n` +
-                    `*otpstop*  - Stop OTP forwarding\n` +
-                    `*status*   - Check bot status\n\n` +
-                    `> ${config.BRANDING}`
-            });
+    if (command === 'otpstart') {
+        if (running) {
+            return sock.sendMessage(msg.key.remoteJid, { text: "⚠️ Already running!" });
         }
-    });
-}
+        running = true;
+        await sock.sendMessage(msg.key.remoteJid, { text: "✅ OTP Forwarding Started" });
+        startOtpLoop(sock);
+
+    } else if (command === 'otpstop') {
+        running = false;
+        await sock.sendMessage(msg.key.remoteJid, { text: "⏹️ OTP Forwarding Stopped" });
+
+    } else if (command === 'status') {
+        const status = running ? "🟢 Active" : "🔴 Stopped";
+        await sock.sendMessage(msg.key.remoteJid, {
+            text: `Bot Status: ${status}`
+        });
+    }
+});
 
 // =============== START ===============
 console.log("🚀 Starting Bot...");
