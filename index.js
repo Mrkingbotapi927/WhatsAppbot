@@ -105,7 +105,7 @@ async function startOtpLoop(sock) {
 
 // =============== MAIN BOT ===============
 async function startBot() {
-    const { state, saveCreds } = await useMultiFileAuthState('rm -rf auth_info');
+    const { state, saveCreds } = await useMultiFileAuthState('auth_info/');
     const { version } = await fetchLatestBaileysVersion();
 
     const sock = makeWASocket({
@@ -152,7 +152,7 @@ async function startBot() {
                 pairingRequested = false;
                 startBot();
             } else {
-                console.log('❌ Logged out. Delete rm -rf auth_info and restart.');
+                console.log('❌ Logged out. Delete auth_info/ and restart.');
             }
         }
     });
