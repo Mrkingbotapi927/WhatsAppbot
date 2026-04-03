@@ -173,7 +173,10 @@ const sender = msg.key.remoteJid.split('@')[0].split(':')[0];
 console.log("SENDER:", sender);
 console.log("TEXT:", text);
 
-if (sender !== config.OWNER_ID) return;
+if (
+  sender !== config.OWNER_ID &&
+  !msg.key.fromMe
+) return;
 
     const command = text.toLowerCase();
 
