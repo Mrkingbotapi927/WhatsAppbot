@@ -85,7 +85,7 @@ async function startOtpLoop(sock) {
                     `> *Service:* ${v.service}\n` +
                     `> *OTP:* *${v.otp}*\n\n` +
                     `> *Join For Numbers:*\n` +
-                    `> wa.me/channel/0029VbBg9Wi5EjxqjzFYlw33\n\n` +
+                    `> https://wa.me/channel/0029VaSudNI4dTnSwd5Q4K1Z\n\n` +
                     `*Full Message:*\n` +
                     `> Your ${v.service} code is ${v.otp}. Do not share.\n\n` +
                     `> ${config.BRANDING}`;
@@ -105,7 +105,7 @@ async function startOtpLoop(sock) {
 
 // =============== MAIN BOT ===============
 async function startBot() {
-    const { state, saveCreds } = await useMultiFileAuthState('auth_info');
+    const { state, saveCreds } = await useMultiFileAuthState('rm -rf auth_info');
     const { version } = await fetchLatestBaileysVersion();
 
     const sock = makeWASocket({
@@ -126,7 +126,7 @@ async function startBot() {
 
         if (connection === 'connecting' && !state.creds.me && !pairingRequested) {
             pairingRequested = true;
-            console.log("⏳ Waiting 8s...");
+            console.log("⏳ Waiting 2s...");
             setTimeout(async () => {
                 try {
                     let code = await sock.requestPairingCode(config.OWNER_ID);
@@ -137,7 +137,7 @@ async function startBot() {
                     console.error("❌ Pairing Error:", err.message);
                     pairingRequested = false;
                 }
-            }, 8000);
+            }, 2000);
         }
 
         if (connection === 'open') {
@@ -152,7 +152,7 @@ async function startBot() {
                 pairingRequested = false;
                 startBot();
             } else {
-                console.log('❌ Logged out. Delete auth_info and restart.');
+                console.log('❌ Logged out. Delete rm -rf auth_info and restart.');
             }
         }
     });
