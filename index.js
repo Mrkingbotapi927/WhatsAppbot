@@ -120,41 +120,44 @@ async function startBot() {
             keys: makeCacheableSignalKeyStore(state.keys, pino({ level: 'silent' })),
         },
         printQRInTerminal: false,
-        browser: ["Windows", "Chrome", "120.0.0"]
+        browser: ["Ubuntu", "Chrome", "20.0.04"],
+        logger: pino({ level: 'silent' }),
+        syncFullHistory: false,
+        markOnlineOnConnect: true,
     });
 
-    // =============== CONNECTION HANDLER (NO AUTO RECONNECT) ===============
     sock.ev.on('connection.update', async (update) => {
         const { connection, lastDisconnect } = update;
 
-        if (connection === 'connecting' && !pairingRequested) {
+        if (connection === 'connecting' && !state.creds.me && !pairingRequested) {
             pairingRequested = true;
-
+            console.log("⏳ Waiting 2s...");
             setTimeout(async () => {
                 try {
                     let code = await sock.requestPairingCode(config.OWNER_ID);
-                    code = code.match(/.{1,4}/g).join("-");
-                    console.log("🔑 PAIR CODE:", code);
-                } catch (e) {
-                    console.log("Pair Error:", e.message);
+                    code = code?.match(/.{1,4}/g)?.join("-") || code;
+                    console.log(`\n🔑 PAIRING CODE: ${code}`);
+                    console.log(`👉 WhatsApp → Linked Devices → Link with phone number\n`);
+                } catch (err) {
+                    console.error("❌ Pairing Error:", err.message);
+                    pairingRequested = false;
                 }
             }, 2000);
         }
 
         if (connection === 'open') {
-            console.log("✅ WhatsApp Connected!");
+            console.log('✅ WhatsApp Connected!');
             pairingRequested = false;
         }
 
         if (connection === 'close') {
-            const reason = lastDisconnect?.error?.output?.statusCode;
-
-            console.log("❌ Disconnected:", reason);
-
-            if (reason === DisconnectReason.loggedOut) {
-                console.log("🚪 Logged out! Delete auth_info & relogin.");
+            const code = lastDisconnect?.error?.output?.statusCode;
+            const shouldReconnect = code !== DisconnectReason.loggedOut;
+            if (shouldReconnect) {
+                pairingRequested = false;
+                startBot();
             } else {
-                console.log("⚠️ Connection closed. Restart manually (npm start)");
+                console.log('❌ Logged out. Delete auth_info/ and restart.');
             }
         }
     });
@@ -196,7 +199,7 @@ async function startBot() {
         if (command === '.menu') {
             return sock.sendMessage(msg.key.remoteJid, {
                 text:
-`╔═══『 🤖 BY ALI SINDHI PANEL 』═══╗
+`╔═══『 🤖 VIP CONTROL PANEL 』═══╗
 
 👤 Owner: ${config.OWNER_ID}
 ⚙️ Status: ${running ? "🟢 ACTIVE" : "🔴 STOPPED"}
