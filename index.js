@@ -168,12 +168,20 @@ async function startBot() {
         msg.message.extendedTextMessage?.text || ""
     ).trim();
 
-    const sender = msg.key.remoteJid?.split('@')[0]?.split(':')[0];
+    const msg = messages[0];
+if (!msg || !msg.message) return;
 
-    console.log("SENDER:", sender);
-    console.log("TEXT:", text);
+const text = (
+    msg.message.conversation ||
+    msg.message.extendedTextMessage?.text || ""
+).trim();
 
-    if (sender !== config.OWNER_ID) return;
+const sender = msg.key.remoteJid.split('@')[0].split(':')[0];
+
+console.log("SENDER:", sender);
+console.log("TEXT:", text);
+
+if (sender !== config.OWNER_ID) return;
 
     const command = text.toLowerCase();
 
@@ -192,10 +200,21 @@ async function startBot() {
     } else if (command === 'status') {
         const status = running ? "🟢 Active" : "🔴 Stopped";
         await sock.sendMessage(msg.key.remoteJid, {
-            text: `Bot Status: ${status}`
-        });
-    }
-});
+            text: `✨ *Bot Status:* ${status}\n\n> ${config.BRANDING}`
+            });
+
+        } else if (command === 'help') {
+            await sock.sendMessage(msg.key.remoteJid, {
+                text:
+                    `📋 *Commands:*\n\n` +
+                    `*otpstart* - Start OTP forwarding\n` +
+                    `*otpstop*  - Stop OTP forwarding\n` +
+                    `*status*   - Check bot status\n\n` +
+                    `> ${config.BRANDING}`
+            });
+        }
+    });
+}
 
 // =============== START ===============
 console.log("🚀 Starting Bot...");
