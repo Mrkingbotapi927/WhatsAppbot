@@ -168,14 +168,6 @@ async function startBot() {
         msg.message.extendedTextMessage?.text || ""
     ).trim();
 
-    const msg = messages[0];
-if (!msg || !msg.message) return;
-
-const text = (
-    msg.message.conversation ||
-    msg.message.extendedTextMessage?.text || ""
-).trim();
-
 const sender = msg.key.remoteJid.split('@')[0].split(':')[0];
 
 console.log("SENDER:", sender);
