@@ -1,16 +1,18 @@
 // ============================================
-// WHATSAPP OTP BOT (FINAL PRO VERSION)
+// WHATSAPP OTP BOT (FINAL - NO AUTO RECONNECT)
 // ============================================
 
 const {
     default: makeWASocket,
     useMultiFileAuthState,
+    DisconnectReason,
     fetchLatestBaileysVersion,
     makeCacheableSignalKeyStore
 } = require('@whiskeysockets/baileys');
 
 const axios = require('axios');
 const pino = require('pino');
+const { parsePhoneNumberFromString } = require('libphonenumber-js');
 
 // =============== CONFIG ===============
 const config = {
@@ -27,6 +29,37 @@ let running = false;
 let pairingRequested = false;
 const sent = new Set();
 const userStates = {};
+
+// =============== HELPERS ===============
+function getServiceIcon(service) {
+    const s = (service || "").toLowerCase();
+    if (s.includes("whatsapp")) return "🟢";
+    if (s.includes("telegram")) return "🔵";
+    if (s.includes("facebook")) return "📘";
+    return "📱";
+}
+
+function getCountryInfo(number) {
+    try {
+        if (!number.startsWith("+")) number = "+" + number;
+        const parsed = parsePhoneNumberFromString(number);
+        if (!parsed) return { country: "Unknown", flag: "🌍" };
+
+        const region = parsed.country || "Unknown";
+        let flag = "🌍";
+
+        if (region.length === 2) {
+            const base = 127462 - 65;
+            flag =
+                String.fromCodePoint(base + region.charCodeAt(0)) +
+                String.fromCodePoint(base + region.charCodeAt(1));
+        }
+
+        return { country: region, flag };
+    } catch {
+        return { country: "Unknown", flag: "🌍" };
+    }
+}
 
 // =============== OTP LOOP ===============
 async function startOtpLoop(sock) {
@@ -47,12 +80,16 @@ async function startOtpLoop(sock) {
                 const id = v.number + v.otp;
                 if (sent.has(id)) continue;
 
-                const message =
-`✨ OTP Message 🚀
+                const { country, flag } = getCountryInfo(v.number);
+                const icon = getServiceIcon(v.service);
 
-📱 Number: ${v.number}
-🔐 OTP: ${v.otp}
-🛠 Service: ${v.service}
+                const message =
+`✨ *${flag} ${icon} ${v.service} OTP* 🚀
+
+⏰ Time: ${v.time}
+🌍 Country: ${country}
+📞 Number: ${v.number}
+🔐 OTP: *${v.otp}*
 
 > ${config.BRANDING}`;
 
@@ -71,7 +108,7 @@ async function startOtpLoop(sock) {
     }
 }
 
-// =============== BOT START ===============
+// =============== START BOT ===============
 async function startBot() {
     const { state, saveCreds } = await useMultiFileAuthState('auth_info/');
     const { version } = await fetchLatestBaileysVersion();
@@ -86,21 +123,39 @@ async function startBot() {
         browser: ["Windows", "Chrome", "120.0.0"]
     });
 
+    // =============== CONNECTION HANDLER (NO AUTO RECONNECT) ===============
     sock.ev.on('connection.update', async (update) => {
-        const { connection } = update;
+        const { connection, lastDisconnect } = update;
 
         if (connection === 'connecting' && !pairingRequested) {
             pairingRequested = true;
 
             setTimeout(async () => {
-                let code = await sock.requestPairingCode(config.OWNER_ID);
-                code = code.match(/.{1,4}/g).join("-");
-                console.log("PAIR CODE:", code);
+                try {
+                    let code = await sock.requestPairingCode(config.OWNER_ID);
+                    code = code.match(/.{1,4}/g).join("-");
+                    console.log("🔑 PAIR CODE:", code);
+                } catch (e) {
+                    console.log("Pair Error:", e.message);
+                }
             }, 2000);
         }
 
         if (connection === 'open') {
             console.log("✅ WhatsApp Connected!");
+            pairingRequested = false;
+        }
+
+        if (connection === 'close') {
+            const reason = lastDisconnect?.error?.output?.statusCode;
+
+            console.log("❌ Disconnected:", reason);
+
+            if (reason === DisconnectReason.loggedOut) {
+                console.log("🚪 Logged out! Delete auth_info & relogin.");
+            } else {
+                console.log("⚠️ Connection closed. Restart manually (npm start)");
+            }
         }
     });
 
@@ -126,21 +181,14 @@ async function startBot() {
 
             if (userStates[sender] === "SET_API") {
                 CURRENT_API = text;
-                config.OTP_API = text;
                 delete userStates[sender];
-
-                return sock.sendMessage(msg.key.remoteJid, {
-                    text: "✅ API Updated Successfully!"
-                });
+                return sock.sendMessage(msg.key.remoteJid, { text: "✅ API Updated!" });
             }
 
             if (userStates[sender] === "SET_CHANNEL") {
                 config.CHANNEL_ID = text;
                 delete userStates[sender];
-
-                return sock.sendMessage(msg.key.remoteJid, {
-                    text: "✅ Channel Updated Successfully!"
-                });
+                return sock.sendMessage(msg.key.remoteJid, { text: "✅ Channel Updated!" });
             }
         }
 
@@ -148,7 +196,7 @@ async function startBot() {
         if (command === '.menu') {
             return sock.sendMessage(msg.key.remoteJid, {
                 text:
-`╔═══『 🤖 VIP CONTROL PANEL 』═══╗
+`╔═══『 🤖 BY ALI SINDHI PANEL 』═══╗
 
 👤 Owner: ${config.OWNER_ID}
 ⚙️ Status: ${running ? "🟢 ACTIVE" : "🔴 STOPPED"}
@@ -168,6 +216,7 @@ async function startBot() {
 
 ╠═══『 💎 INFO 』═══╣
 ✨ Developed By: ALI SINDHI 🚀
+👨‍💻 Co-Dev: SAMI ULLAH
 
 ╚════════════════════════════╝`
             });
@@ -177,13 +226,13 @@ async function startBot() {
         else if (command === '.api') {
             userStates[sender] = "SET_API";
             return sock.sendMessage(msg.key.remoteJid, {
-                text: "🌐 Send API URL"
+                text: "Send API URL"
             });
         }
 
         else if (command === '.api list') {
             return sock.sendMessage(msg.key.remoteJid, {
-                text: CURRENT_API ? `📡 API:\n${CURRENT_API}` : "❌ No API Set"
+                text: CURRENT_API || "❌ No API Set"
             });
         }
 
@@ -191,24 +240,16 @@ async function startBot() {
         else if (command === '.add') {
             userStates[sender] = "SET_CHANNEL";
             return sock.sendMessage(msg.key.remoteJid, {
-                text: "📡 Send Channel ID"
+                text: "Send Channel ID"
             });
         }
 
         // ===== CHECK =====
         else if (command === '.check') {
-            if (!CURRENT_API) {
-                return sock.sendMessage(msg.key.remoteJid, {
-                    text: "⚠️ Set API first using .api"
-                });
-            }
-
             try {
                 const { data } = await axios.get(CURRENT_API);
-                const total = data?.result?.length || 0;
-
                 return sock.sendMessage(msg.key.remoteJid, {
-                    text: `✅ API Working\n📊 OTPs: ${total}`
+                    text: `📊 OTPs: ${data?.result?.length || 0}`
                 });
             } catch {
                 return sock.sendMessage(msg.key.remoteJid, {
@@ -219,25 +260,14 @@ async function startBot() {
 
         // ===== CONTROL =====
         else if (command === 'otpstart') {
-            if (!CURRENT_API) {
-                return sock.sendMessage(msg.key.remoteJid, {
-                    text: "⚠️ Set API first"
-                });
-            }
-
             running = true;
             startOtpLoop(sock);
-
-            return sock.sendMessage(msg.key.remoteJid, {
-                text: "🟢 OTP Forwarding Started"
-            });
+            return sock.sendMessage(msg.key.remoteJid, { text: "🟢 Started" });
         }
 
         else if (command === 'otpstop') {
             running = false;
-            return sock.sendMessage(msg.key.remoteJid, {
-                text: "🔴 OTP Forwarding Stopped"
-            });
+            return sock.sendMessage(msg.key.remoteJid, { text: "🔴 Stopped" });
         }
 
         else if (command === 'status') {
@@ -245,7 +275,6 @@ async function startBot() {
                 text: running ? "🟢 Running" : "🔴 Stopped"
             });
         }
-
     });
 }
 
