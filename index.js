@@ -1,5 +1,5 @@
 // ============================================
-// WHATSAPP OTP BOT (FINAL - NO AUTO RECONNECT)
+// FINAL FIXED BOT (COMMAND FIX + NO AUTO BUG)
 // ============================================
 
 const {
@@ -12,15 +12,12 @@ const {
 
 const axios = require('axios');
 const pino = require('pino');
-const { parsePhoneNumberFromString } = require('libphonenumber-js');
 
 // =============== CONFIG ===============
 const config = {
-    OTP_API: "",
-    CHANNEL_ID: "",
     OWNER_ID: "923273788442",
-    INTERVAL: 10000,
-    BRANDING: "Developed By: ALI SINDHI 🚀"
+    CHANNEL_ID: "",
+    INTERVAL: 10000
 };
 
 // =============== GLOBALS ===============
@@ -29,37 +26,6 @@ let running = false;
 let pairingRequested = false;
 const sent = new Set();
 const userStates = {};
-
-// =============== HELPERS ===============
-function getServiceIcon(service) {
-    const s = (service || "").toLowerCase();
-    if (s.includes("whatsapp")) return "🟢";
-    if (s.includes("telegram")) return "🔵";
-    if (s.includes("facebook")) return "📘";
-    return "📱";
-}
-
-function getCountryInfo(number) {
-    try {
-        if (!number.startsWith("+")) number = "+" + number;
-        const parsed = parsePhoneNumberFromString(number);
-        if (!parsed) return { country: "Unknown", flag: "🌍" };
-
-        const region = parsed.country || "Unknown";
-        let flag = "🌍";
-
-        if (region.length === 2) {
-            const base = 127462 - 65;
-            flag =
-                String.fromCodePoint(base + region.charCodeAt(0)) +
-                String.fromCodePoint(base + region.charCodeAt(1));
-        }
-
-        return { country: region, flag };
-    } catch {
-        return { country: "Unknown", flag: "🌍" };
-    }
-}
 
 // =============== OTP LOOP ===============
 async function startOtpLoop(sock) {
@@ -80,18 +46,12 @@ async function startOtpLoop(sock) {
                 const id = v.number + v.otp;
                 if (sent.has(id)) continue;
 
-                const { country, flag } = getCountryInfo(v.number);
-                const icon = getServiceIcon(v.service);
-
                 const message =
-`✨ *${flag} ${icon} ${v.service} OTP* 🚀
+`OTP
 
-⏰ Time: ${v.time}
-🌍 Country: ${country}
-📞 Number: ${v.number}
-🔐 OTP: *${v.otp}*
-
-> ${config.BRANDING}`;
+Number: ${v.number}
+OTP: ${v.otp}
+Service: ${v.service}`;
 
                 if (config.CHANNEL_ID) {
                     await sock.sendMessage(config.CHANNEL_ID, { text: message });
@@ -108,7 +68,7 @@ async function startOtpLoop(sock) {
     }
 }
 
-// =============== START BOT ===============
+// =============== MAIN BOT ===============
 async function startBot() {
     const { state, saveCreds } = await useMultiFileAuthState('auth_info/');
     const { version } = await fetchLatestBaileysVersion();
@@ -164,7 +124,7 @@ async function startBot() {
 
     sock.ev.on('creds.update', saveCreds);
 
-    // =============== MESSAGE HANDLER ===============
+    // ===== MESSAGE HANDLER =====
     sock.ev.on('messages.upsert', async ({ messages }) => {
         const msg = messages[0];
         if (!msg || !msg.message) return;
@@ -173,130 +133,113 @@ async function startBot() {
             msg.message.conversation ||
             msg.message.extendedTextMessage?.text || "";
 
-        const sender = msg.key.remoteJid.split('@')[0].split(':')[0];
+        if (!text) return;
 
-        if (sender !== config.OWNER_ID && !msg.key.fromMe) return;
+        const sender = msg.key.remoteJid.split('@')[0];
 
-        const command = text.toLowerCase().trim();
+        if (sender !== config.OWNER_ID) return;
+
+        const cmd = text.toLowerCase().trim();
 
         // ===== STATE =====
         if (userStates[sender]) {
 
             if (userStates[sender] === "SET_API") {
+
+                if (!text.startsWith("http")) {
+                    return sock.sendMessage(msg.key.remoteJid, {
+                        text: "❌ Send valid API URL"
+                    });
+                }
+
                 CURRENT_API = text;
                 delete userStates[sender];
-                return sock.sendMessage(msg.key.remoteJid, { text: "✅ API Updated!" });
+
+                return sock.sendMessage(msg.key.remoteJid, {
+                    text: "✅ API Added Successfully!"
+                });
             }
 
             if (userStates[sender] === "SET_CHANNEL") {
+
+                if (!text.includes("@newsletter")) {
+                    return sock.sendMessage(msg.key.remoteJid, {
+                        text: "❌ Invalid Channel ID"
+                    });
+                }
+
                 config.CHANNEL_ID = text;
                 delete userStates[sender];
-                return sock.sendMessage(msg.key.remoteJid, { text: "✅ Channel Updated!" });
+
+                return sock.sendMessage(msg.key.remoteJid, {
+                    text: "✅ Channel Set Successfully!"
+                });
             }
         }
 
-        // ===== MENU =====
-        if (command === '.menu') {
+        // ===== COMMANDS =====
+        if (cmd === '.menu') {
             return sock.sendMessage(msg.key.remoteJid, {
                 text:
-`╔═══『 😈BY ALI SINDHI PANEL👻 』═══╗
+`VIP PANEL
 
-👤 Owner: ${config.OWNER_ID}
-⚙️ Status: ${running ? "🟢 ACTIVE" : "🔴 STOPPED"}
-
-╠═══『 📡 API SYSTEM 』═══╣
-➤ .api
-➤ .api list
-➤ .check
-
-╠═══『 📢 CHANNEL SYSTEM 』═══╣
-➤ .add
-
-╠═══『 🚀 BOT CONTROL 』═══╣
-➤ otpstart
-➤ otpstop
-➤ status
-
-╠═══『 💎 INFO 』═══╣
-✨ Developed By: ALI SINDHI 🚀
-👨‍💻 Co-Dev: SAMI ULLAH
-
-╚════════════════════════════╝`
+.api
+.api list
+.add
+.check
+otpstart
+otpstop
+status`
             });
         }
 
-if (userStates[sender]) {
-
-    // ===== API SET =====
-    if (userStates[sender] === "SET_API") {
-
-        if (!text || text.startsWith(".")) {
+        else if (cmd === '.api') {
+            userStates[sender] = "SET_API";
             return sock.sendMessage(msg.key.remoteJid, {
-                text: "❌ Please send a valid API URL"
+                text: "Send API URL"
             });
         }
 
-        if (!text.startsWith("http")) {
+        else if (cmd === '.api list') {
             return sock.sendMessage(msg.key.remoteJid, {
-                text: "❌ Invalid API URL!"
+                text: CURRENT_API || "No API"
             });
         }
 
-        CURRENT_API = text;
-        delete userStates[sender];
-
-        return sock.sendMessage(msg.key.remoteJid, {
-            text: "✅ API Updated Successfully!"
-        });
-    }
-
-    // ===== CHANNEL SET =====
-    if (userStates[sender] === "SET_CHANNEL") {
-
-        if (!text.includes("@newsletter")) {
+        else if (cmd === '.add') {
+            userStates[sender] = "SET_CHANNEL";
             return sock.sendMessage(msg.key.remoteJid, {
-                text: "❌ Invalid Channel ID!"
+                text: "Send Channel ID"
             });
         }
 
-        config.CHANNEL_ID = text;
-        delete userStates[sender];
-
-        return sock.sendMessage(msg.key.remoteJid, {
-            text: "✅ Channel Updated Successfully!"
-        });
-    }
-}
-
-        // ===== CHECK =====
-        else if (command === '.check') {
+        else if (cmd === '.check') {
             try {
                 const { data } = await axios.get(CURRENT_API);
                 return sock.sendMessage(msg.key.remoteJid, {
-                    text: `📊 OTPs: ${data?.result?.length || 0}`
+                    text: `OTPs: ${data?.result?.length || 0}`
                 });
             } catch {
                 return sock.sendMessage(msg.key.remoteJid, {
-                    text: "❌ API Error"
+                    text: "API Error"
                 });
             }
         }
 
-        // ===== CONTROL =====
-        else if (command === 'otpstart') {
+        else if (cmd === 'otpstart') {
             running = true;
             startOtpLoop(sock);
-            return sock.sendMessage(msg.key.remoteJid, { text: "🟢 Started" });
+            return sock.sendMessage(msg.key.remoteJid, { text: "Started" });
         }
 
-        else if (command === 'otpstop') {
+        else if (cmd === 'otpstop') {
             running = false;
-            return sock.sendMessage(msg.key.remoteJid, { text: "🔴 Stopped" });
+            return sock.sendMessage(msg.key.remoteJid, { text: "Stopped" });
         }
 
-        else if (command === 'status') {
+        else if (cmd === 'status') {
             return sock.sendMessage(msg.key.remoteJid, {
-                text: running ? "🟢 Running" : "🔴 Stopped"
+                text: running ? "Running" : "Stopped"
             });
         }
     });
