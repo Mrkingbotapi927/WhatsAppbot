@@ -199,7 +199,7 @@ async function startBot() {
         if (command === '.menu') {
             return sock.sendMessage(msg.key.remoteJid, {
                 text:
-`╔═══『 🤖 VIP CONTROL PANEL 』═══╗
+`╔═══『 😈BY ALI SINDHI PANEL👻 』═══╗
 
 👤 Owner: ${config.OWNER_ID}
 ⚙️ Status: ${running ? "🟢 ACTIVE" : "🔴 STOPPED"}
@@ -225,27 +225,48 @@ async function startBot() {
             });
         }
 
-        // ===== API =====
-        else if (command === '.api') {
-            userStates[sender] = "SET_API";
+if (userStates[sender]) {
+
+    // ===== API SET =====
+    if (userStates[sender] === "SET_API") {
+
+        if (!text || text.startsWith(".")) {
             return sock.sendMessage(msg.key.remoteJid, {
-                text: "Send API URL"
+                text: "❌ Please send a valid API URL"
             });
         }
 
-        else if (command === '.api list') {
+        if (!text.startsWith("http")) {
             return sock.sendMessage(msg.key.remoteJid, {
-                text: CURRENT_API || "❌ No API Set"
+                text: "❌ Invalid API URL!"
             });
         }
 
-        // ===== CHANNEL =====
-        else if (command === '.add') {
-            userStates[sender] = "SET_CHANNEL";
+        CURRENT_API = text;
+        delete userStates[sender];
+
+        return sock.sendMessage(msg.key.remoteJid, {
+            text: "✅ API Updated Successfully!"
+        });
+    }
+
+    // ===== CHANNEL SET =====
+    if (userStates[sender] === "SET_CHANNEL") {
+
+        if (!text.includes("@newsletter")) {
             return sock.sendMessage(msg.key.remoteJid, {
-                text: "Send Channel ID"
+                text: "❌ Invalid Channel ID!"
             });
         }
+
+        config.CHANNEL_ID = text;
+        delete userStates[sender];
+
+        return sock.sendMessage(msg.key.remoteJid, {
+            text: "✅ Channel Updated Successfully!"
+        });
+    }
+}
 
         // ===== CHECK =====
         else if (command === '.check') {
