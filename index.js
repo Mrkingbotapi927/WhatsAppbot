@@ -148,40 +148,50 @@ if (
         const cmd = text.toLowerCase().trim();
 
         // ===== STATE =====
-        if (userStates[sender]) {
+        if (text.startsWith(".")) {
+    delete userStates[sender];
+}
 
-            if (userStates[sender] === "SET_API") {
+    // ❗ Ignore commands while waiting input
+    if (text.startsWith(".")) {
+        delete userStates[sender];
+        return sock.sendMessage(msg.key.remoteJid, {
+            text: "⚠️ Previous process cancelled."
+        });
+    }
 
-                if (!text.startsWith("http")) {
-                    return sock.sendMessage(msg.key.remoteJid, {
-                        text: "❌ Send valid API URL"
-                    });
-                }
+    if (userStates[sender] === "SET_API") {
 
-                CURRENT_API = text;
-                delete userStates[sender];
-
-                return sock.sendMessage(msg.key.remoteJid, {
-                    text: "✅ API Added Successfully!"
-                });
-            }
-
-            if (userStates[sender] === "SET_CHANNEL") {
-
-                if (!text.includes("@newsletter")) {
-                    return sock.sendMessage(msg.key.remoteJid, {
-                        text: "❌ Invalid Channel ID"
-                    });
-                }
-
-                config.CHANNEL_ID = text;
-                delete userStates[sender];
-
-                return sock.sendMessage(msg.key.remoteJid, {
-                    text: "✅ Channel Set Successfully!"
-                });
-            }
+        if (!text.startsWith("http")) {
+            return sock.sendMessage(msg.key.remoteJid, {
+                text: "❌ Send valid API URL"
+            });
         }
+
+        CURRENT_API = text;
+        delete userStates[sender];
+
+        return sock.sendMessage(msg.key.remoteJid, {
+            text: "✅ API Added Successfully!"
+        });
+    }
+
+    if (userStates[sender] === "SET_CHANNEL") {
+
+        if (!text.includes("@newsletter")) {
+            return sock.sendMessage(msg.key.remoteJid, {
+                text: "❌ Invalid Channel ID"
+            });
+        }
+
+        config.CHANNEL_ID = text;
+        delete userStates[sender];
+
+        return sock.sendMessage(msg.key.remoteJid, {
+            text: "✅ Channel Set Successfully!"
+        });
+    }
+}
 
         // ===== COMMANDS =====
         if (cmd === '.menu') {
