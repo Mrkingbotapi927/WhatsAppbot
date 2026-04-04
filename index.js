@@ -122,11 +122,14 @@ async function startBot() {
     // MESSAGES
     sock.ev.on('messages.upsert', async ({ messages }) => {
         const msg = messages[0];
-        if (!msg || !msg.message) return;
+if (!msg || !msg.message) return;
 
-        const text =
-            msg.message.conversation ||
-            msg.message.extendedTextMessage?.text || "";
+// 🔥 IMPORTANT FIX
+if (msg.key.fromMe) return;
+
+const text =
+    msg.message.conversation ||
+    msg.message.extendedTextMessage?.text || "";
 
         if (!text) return;
 
