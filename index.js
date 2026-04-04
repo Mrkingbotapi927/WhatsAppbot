@@ -130,18 +130,18 @@ async function startBot() {
         if (!msg || !msg.message) return;
 
         const text =
-            msg.message.conversation ||
-            msg.message.extendedTextMessage?.text || "";
+    msg.message.conversation ||
+    msg.message.extendedTextMessage?.text || "";
 
-        if (!text) return;
-
+// 🔥 YAH ADD KARO
+if (!text) return;
         const sender = msg.key.remoteJid.split('@')[0];
 
         console.log("SENDER:", sender);
-console.log("TEXT:", text);
+        console.log("TEXT:", text);
 
 if (
-  sender !== config.OWNER_ID &&
+  !sender.includes(config.OWNER_ID) &&
   !msg.key.fromMe
 ) return;
 
