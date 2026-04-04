@@ -1,6 +1,4 @@
-// ============================================
-// FINAL FIXED BOT (COMMAND FIX + NO AUTO BUG)
-// ============================================
+// ================== WHATSAPP OTP BOT FINAL ==================
 
 const {
     default: makeWASocket,
@@ -13,48 +11,45 @@ const {
 const axios = require('axios');
 const pino = require('pino');
 
-// =============== CONFIG ===============
+// CONFIG
 const config = {
     OWNER_ID: "923273788442",
     CHANNEL_ID: "",
     INTERVAL: 10000
 };
 
-// =============== GLOBALS ===============
+// GLOBALS
 let CURRENT_API = "";
 let running = false;
 let pairingRequested = false;
 const sent = new Set();
 const userStates = {};
 
-// =============== OTP LOOP ===============
+// OTP LOOP
 async function startOtpLoop(sock) {
     while (running) {
-
         if (!CURRENT_API) {
-            console.log("⚠️ No API Set!");
             await new Promise(r => setTimeout(r, 5000));
             continue;
         }
 
         try {
             const { data } = await axios.get(CURRENT_API);
-
             if (!data?.result) continue;
 
             for (const v of data.result) {
                 const id = v.number + v.otp;
                 if (sent.has(id)) continue;
 
-                const message =
-`OTP
+                const msg =
+`OTP ALERT
 
 Number: ${v.number}
 OTP: ${v.otp}
 Service: ${v.service}`;
 
                 if (config.CHANNEL_ID) {
-                    await sock.sendMessage(config.CHANNEL_ID, { text: message });
+                    await sock.sendMessage(config.CHANNEL_ID, { text: msg });
                 }
 
                 sent.add(id);
@@ -68,7 +63,7 @@ Service: ${v.service}`;
     }
 }
 
-// =============== MAIN BOT ===============
+// START BOT
 async function startBot() {
     const { state, saveCreds } = await useMultiFileAuthState('auth_info/');
     const { version } = await fetchLatestBaileysVersion();
@@ -124,88 +119,80 @@ async function startBot() {
 
     sock.ev.on('creds.update', saveCreds);
 
-    // ===== MESSAGE HANDLER =====
+    // MESSAGES
     sock.ev.on('messages.upsert', async ({ messages }) => {
         const msg = messages[0];
         if (!msg || !msg.message) return;
 
         const text =
-    msg.message.conversation ||
-    msg.message.extendedTextMessage?.text || "";
+            msg.message.conversation ||
+            msg.message.extendedTextMessage?.text || "";
 
-// 🔥 YAH ADD KARO
-if (!text) return;
+        if (!text) return;
+
         const sender = msg.key.remoteJid.split('@')[0];
 
+        // DEBUG (optional)
         console.log("SENDER:", sender);
         console.log("TEXT:", text);
 
-if (
-  !sender.includes(config.OWNER_ID) &&
-  !msg.key.fromMe
-) return;
+        // OWNER CHECK
+        if (
+            !sender.includes(config.OWNER_ID) &&
+            !msg.key.fromMe
+        ) return;
 
         const cmd = text.toLowerCase().trim();
 
-        // ===== STATE =====
-        if (text.startsWith(".")) {
-    delete userStates[sender];
-}
+        // ===== STATE HANDLER =====
+        if (userStates[sender]) {
 
-    // ❗ Ignore commands while waiting input
-    if (text.startsWith(".")) {
-        delete userStates[sender];
-        return sock.sendMessage(msg.key.remoteJid, {
-            text: "⚠️ Previous process cancelled."
-        });
-    }
+            // cancel if new command
+            if (text.startsWith(".")) {
+                delete userStates[sender];
+                return sock.sendMessage(msg.key.remoteJid, {
+                    text: "⚠️ Previous process cancelled."
+                });
+            }
 
-    if (userStates[sender] === "SET_API") {
+            if (userStates[sender] === "SET_API") {
+                if (!text.startsWith("http")) {
+                    return sock.sendMessage(msg.key.remoteJid, {
+                        text: "❌ Send valid API URL"
+                    });
+                }
 
-        if (!text.startsWith("http")) {
-            return sock.sendMessage(msg.key.remoteJid, {
-                text: "❌ Send valid API URL"
-            });
+                CURRENT_API = text;
+                delete userStates[sender];
+
+                return sock.sendMessage(msg.key.remoteJid, {
+                    text: "✅ API Added Successfully!"
+                });
+            }
+
+            if (userStates[sender] === "SET_CHANNEL") {
+                if (!text.includes("@newsletter")) {
+                    return sock.sendMessage(msg.key.remoteJid, {
+                        text: "❌ Invalid Channel ID"
+                    });
+                }
+
+                config.CHANNEL_ID = text;
+                delete userStates[sender];
+
+                return sock.sendMessage(msg.key.remoteJid, {
+                    text: "✅ Channel Set Successfully!"
+                });
+            }
         }
 
-        CURRENT_API = text;
-        delete userStates[sender];
-
-        return sock.sendMessage(msg.key.remoteJid, {
-            text: "✅ API Added Successfully!"
-        });
-    }
-
-    if (userStates[sender] === "SET_CHANNEL") {
-
-        if (!text.includes("@newsletter")) {
-            return sock.sendMessage(msg.key.remoteJid, {
-                text: "❌ Invalid Channel ID"
-            });
-        }
-
-        config.CHANNEL_ID = text;
-        delete userStates[sender];
-
-        return sock.sendMessage(msg.key.remoteJid, {
-            text: "✅ Channel Set Successfully!"
-        });
-    }
-}
+        // ===== COMMANDS =====
 
         if (cmd === '.menu') {
-    return sock.sendMessage(msg.key.remoteJid, {
-        text: `VIP PANEL
-
-.api
-.api list
-.add
-.check
-otpstart
-otpstop
-status`
-    });
-}
+            return sock.sendMessage(msg.key.remoteJid, {
+                text: "VIP PANEL\n\n.api\n.api list\n.add\n.check\notpstart\notpstop\nstatus"
+            });
+        }
 
         else if (cmd === '.api') {
             userStates[sender] = "SET_API";
@@ -259,6 +246,6 @@ status`
     });
 }
 
-// =============== START ===============
+// START
 console.log("🚀 Starting Bot...");
 startBot();
