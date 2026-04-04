@@ -125,7 +125,7 @@ async function startBot() {
 if (!msg || !msg.message) return;
 
 // 🔥 IMPORTANT FIX
-if (msg.key.fromMe) return;
+if (msg.key.fromMe && !msg.key.remoteJid.includes("@newsletter")) return;
 
 const text =
     msg.message.conversation ||
