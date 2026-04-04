@@ -193,11 +193,9 @@ if (
     }
 }
 
-        // ===== COMMANDS =====
         if (cmd === '.menu') {
-            return sock.sendMessage(msg.key.remoteJid, {
-                text:
-`VIP PANEL
+    return sock.sendMessage(msg.key.remoteJid, {
+        text: `VIP PANEL
 
 .api
 .api list
@@ -206,8 +204,8 @@ if (
 otpstart
 otpstop
 status`
-            });
-        }
+    });
+}
 
         else if (cmd === '.api') {
             userStates[sender] = "SET_API";
