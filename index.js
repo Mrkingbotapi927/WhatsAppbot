@@ -137,7 +137,13 @@ async function startBot() {
 
         const sender = msg.key.remoteJid.split('@')[0];
 
-        if (sender !== config.OWNER_ID) return;
+        console.log("SENDER:", sender);
+console.log("TEXT:", text);
+
+if (
+  sender !== config.OWNER_ID &&
+  !msg.key.fromMe
+) return;
 
         const cmd = text.toLowerCase().trim();
 
